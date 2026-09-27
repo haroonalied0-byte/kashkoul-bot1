@@ -153,27 +153,22 @@ def generate_sorted_code():
 
 def get_main_inline_keyboard():
     markup = InlineKeyboardMarkup()
-    # التنبيه الذكي مع المنبه جنباً إلى جنب مع الكتابة
-    # تصفح المواد جنباً إلى جنب مع الكتابة
-    # حاسبة المعدل جنباً إلى جنب مع الكتابة
     markup.row(
         InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"),
         InlineKeyboardButton("🔍 تصفح المواد", callback_data="browse_subjects")
     )
     markup.row(
         InlineKeyboardButton("🧮 حاسبة المعدل", callback_data="gpa_calculator"),
-        # الخدمات الخاصة: الكلمتان أعلى والكريستالة/الماسة تحتهما تماماً
-        InlineKeyboardButton("الخدمات الخاصة\n💎", callback_data="special_services_menu")
+        # تم تعديل زر الخدمات الخاصة ليكون في سطر متناسق وواضح تماماً دون انضغاط
+        InlineKeyboardButton("💎 الخدمات الخاصة", callback_data="special_services_menu")
     )
     markup.row(
         InlineKeyboardButton("🌿 شجرة المواد", callback_data="show_comm_tree"),
         InlineKeyboardButton("📿 أذكر الله", callback_data="say_azkar")
     )
-    # محادثة الذكاء الاصطناعي: الروبوت تحت الكتابة
     markup.row(
         InlineKeyboardButton("محادثة الذكاء الاصطناعي\n🤖", callback_data="ai_chat_start")
     )
-    # نبذة عن البوت
     markup.row(
         InlineKeyboardButton("✍️ نبذة عن البوت", callback_data="bot_about")
     )
@@ -1164,5 +1159,5 @@ def handle_receipt_file(message):
     user_states.pop(chat_id, None)
 
 if __name__ == '__main__':
-    print("البوت يعمل الآن بالتنسيق المحدث والمتناسق للكمبيوتر والجوال...")
+    print("البوت يعمل الآن بالتنسيق المثالي والمضبوط لأزرار القائمة...")
     bot.infinity_polling()

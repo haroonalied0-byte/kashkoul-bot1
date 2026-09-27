@@ -153,22 +153,23 @@ def generate_sorted_code():
 
 def get_main_inline_keyboard():
     markup = InlineKeyboardMarkup()
-    # تصفح المواد (جانبي)، التنبيه الذكي (جانبي)
+    # التنبيه الذكي مع المنبه جنباً إلى جنب مع الكتابة
+    # تصفح المواد جنباً إلى جنب مع الكتابة
+    # حاسبة المعدل جنباً إلى جنب مع الكتابة
     markup.row(
-        InlineKeyboardButton("🔍 تصفح المواد", callback_data="browse_subjects"),
-        InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu")
+        InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"),
+        InlineKeyboardButton("🔍 تصفح المواد", callback_data="browse_subjects")
     )
-    # حاسبة المعدل (جانبي)، الخدمات الخاصة (التاج فوق النص تماماً وبشكل متناسق)
     markup.row(
         InlineKeyboardButton("🧮 حاسبة المعدل", callback_data="gpa_calculator"),
-        InlineKeyboardButton("👑\nالخدمات الخاصة", callback_data="special_services_menu")
+        # الخدمات الخاصة: الكلمتان أعلى والكريستالة/الماسة تحتهما تماماً
+        InlineKeyboardButton("الخدمات الخاصة\n💎", callback_data="special_services_menu")
     )
-    # شجرة المواد، أذكر الله
     markup.row(
         InlineKeyboardButton("🌿 شجرة المواد", callback_data="show_comm_tree"),
         InlineKeyboardButton("📿 أذكر الله", callback_data="say_azkar")
     )
-    # محادثة الذكاء الاصطناعي (الروبوت تحت النص)
+    # محادثة الذكاء الاصطناعي: الروبوت تحت الكتابة
     markup.row(
         InlineKeyboardButton("محادثة الذكاء الاصطناعي\n🤖", callback_data="ai_chat_start")
     )
@@ -196,7 +197,7 @@ def get_special_services_keyboard():
         InlineKeyboardButton("📄 تصميم السيرة الذاتية", callback_data="srv_cv")
     )
     markup.row(
-        InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu")
+        InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu")
     )
     return markup
 
@@ -369,7 +370,7 @@ def handle_text_messages(message):
         reply_text = ask_real_gemini(text)
         
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         
         safe_delete_message(chat_id, message.message_id)
         send_or_replace_message(chat_id, f"🤖 **جيميناي:**\n\n{reply_text}", reply_markup=markup, parse_mode="Markdown")
@@ -407,7 +408,7 @@ def handle_text_messages(message):
             
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("إدارة الروابط والأسابيع", callback_data="admin_add_link_menu"))
-            markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             
             send_or_replace_message(chat_id, f"تم بنجاح تحديث وإضافة روابط (الأسبوع {week_num}) لـ ({count}) مادة وإرسال الإشعارات التسويقية للمشتركين!", reply_markup=markup)
         except Exception as e:
@@ -438,7 +439,7 @@ def handle_text_messages(message):
             user_states.pop(chat_id, None)
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
-            markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل موعدها بـ 5 دقائق فقط.", reply_markup=markup)
         except Exception:
             send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً (صيغة 12 ساعة):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 10:00 صباحاً | 11:00 ظهراً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
@@ -469,7 +470,7 @@ def handle_text_messages(message):
             user_states.pop(chat_id, None)
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
-            markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تم تحديث بيانات المحاضرة بنجاح!", reply_markup=markup)
         except Exception:
             send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
@@ -499,7 +500,7 @@ def handle_text_messages(message):
 
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("🧮 حاسبة المعدل", callback_data="gpa_calculator"))
-            markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             
             if gpa < 55:
                 status_message = (
@@ -539,7 +540,7 @@ def handle_text_messages(message):
             }
             
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="gpa_calculator"))
+            markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
             send_or_replace_message(chat_id, "حساب المعدل التراكمي (الخطوة 2/2):\n\nالآن أرسل نقاط مواد الفصل الحالي وعدد الساعات (كل مادة في سطر):\n`النقاط (مثل 3.0) | عدد الساعات`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
         except Exception:
             send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل البيانات هكذا:\n`إجمالي الساعات السابقة | المعدل التراكمي السابق`\nأو اكتب `إلغاء`.", parse_mode="Markdown")
@@ -575,7 +576,7 @@ def handle_text_messages(message):
 
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("🧮 حاسبة المعدل", callback_data="gpa_calculator"))
-            markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             
             fail_threshold = 2.0 if prev_gpa <= 4.0 else 55.0
             
@@ -613,7 +614,7 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         user_states[chat_id] = {"step": "ai_chatting"}
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         send_or_replace_message(
             chat_id, 
             "🤖 **مرحباً بك في مساعد الذكاء الاصطناعي (Gemini)**\n\n"
@@ -635,7 +636,7 @@ def handle_callback_query(call):
                 InlineKeyboardButton(f"رابط الأسبوع {i+1}", callback_data=f"admin_add_week_{i+1}"),
                 InlineKeyboardButton(f"رابط الأسبوع {i+2}", callback_data=f"admin_add_week_{i+2}")
             )
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         send_or_replace_message(chat_id, "اختر الأسبوع الذي تريد إضافة أو تحديث روابطه لجميع المواد:", reply_markup=markup)
         return
 
@@ -651,7 +652,7 @@ def handle_callback_query(call):
             InlineKeyboardButton("حذف روابط هذا الأسبوع", callback_data=f"admin_clear_week_{week_num}"),
             InlineKeyboardButton("تعديل / تحديث الروابط", callback_data=f"admin_add_week_{week_num}")
         )
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="admin_add_link_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="admin_add_link_menu"))
         
         send_or_replace_message(
             chat_id, 
@@ -691,7 +692,7 @@ def handle_callback_query(call):
                 InlineKeyboardButton(f"الأسبوع {i+1}", callback_data=f"admin_show_week_{i+1}"),
                 InlineKeyboardButton(f"الأسبوع {i+2}", callback_data=f"admin_show_week_{i+2}")
             )
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         send_or_replace_message(chat_id, "اختر الأسبوع لعرض الروابط المخزنة فيه لكل المواد:", reply_markup=markup)
         return
 
@@ -708,7 +709,7 @@ def handle_callback_query(call):
         conn.close()
 
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="admin_show_links_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="admin_show_links_menu"))
 
         if not links:
             send_or_replace_message(chat_id, f"لا توجد أي روابط مخزنة للأسبوع {week_num}.", reply_markup=markup)
@@ -729,7 +730,7 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("ذكر آخر", callback_data="say_azkar"))
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         send_or_replace_message(chat_id, f"أذكر الله يذكرك:\n\n{random_zekr}", reply_markup=markup)
 
     elif data == "schedule_menu":
@@ -747,7 +748,7 @@ def handle_callback_query(call):
             markup.row(InlineKeyboardButton("تعديل محاضرة", callback_data="edit_schedule_select"))
             markup.row(InlineKeyboardButton("تفريغ الجدول بالكامل", callback_data="clear_schedule"))
             
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
 
         text = "📅 **جدول المحاضرات الشخصي الذكي**\n\n"
         if not schedules:
@@ -766,7 +767,7 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         user_states[chat_id] = {"step": "waiting_for_schedule_details"}
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="schedule_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
         send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً (بصيغة 12 ساعة):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 10:00 صباحاً | 11:00 ظهراً`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "edit_schedule_select":
@@ -779,13 +780,13 @@ def handle_callback_query(call):
 
         markup = InlineKeyboardMarkup()
         if not schedules:
-            markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="schedule_menu"))
+            markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
             send_or_replace_message(chat_id, "لا توجد محاضرات لتعديلها.", reply_markup=markup)
             return
 
         for s_id, d_name, s_name, start_t in schedules:
             markup.row(InlineKeyboardButton(f"تعديل: {d_name} - {s_name} ({start_t})", callback_data=f"edit_sch_{s_id}"))
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="schedule_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
         
         send_or_replace_message(chat_id, "اختر المحاضرة التي تريد تعديلها:", reply_markup=markup)
 
@@ -795,7 +796,7 @@ def handle_callback_query(call):
         user_states[chat_id] = {"step": "waiting_for_edit_schedule_details", "edit_schedule_id": s_id}
         
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="schedule_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
         send_or_replace_message(chat_id, "أرسل البيانات الجديدة:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "clear_schedule":
@@ -807,7 +808,7 @@ def handle_callback_query(call):
         conn.close()
         
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="schedule_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
         send_or_replace_message(chat_id, "تم تفريغ جدولك الشخصي بنجاح.", reply_markup=markup)
 
     elif data == "gpa_calculator":
@@ -816,21 +817,21 @@ def handle_callback_query(call):
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("المعدل الفصلي", callback_data="gpa_semester"))
         markup.row(InlineKeyboardButton("المعدل التراكمي", callback_data="gpa_cumulative"))
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         send_or_replace_message(chat_id, "حاسبة المعدل الجامعي:\n\nاختر نوع الحساب الذي تريده:", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "gpa_semester":
         bot.answer_callback_query(call.id)
         user_states[chat_id] = {"step": "waiting_for_semester_gpa"}
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="gpa_calculator"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
         send_or_replace_message(chat_id, "حساب المعدل الفصلي:\n\nأرسل علاماتك وعدد الساعات (كل مادة في سطر):\n`العلامة | عدد الساعات`\n\nمثال:\n`85 | 3`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "gpa_cumulative":
         bot.answer_callback_query(call.id)
         user_states[chat_id] = {"step": "waiting_for_cumulative_prev"}
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="gpa_calculator"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
         send_or_replace_message(chat_id, "حساب المعدل التراكمي (الخطوة 1/2):\n\nأرسل بياناتك السابقة:\n`إجمالي الساعات السابقة | المعدل التراكمي السابق`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "special_services_menu":
@@ -851,14 +852,14 @@ def handle_callback_query(call):
         service_name = titles.get(data, "الخدمة المطلوبة")
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("اطلب الخدمة الآن", url=f"https://t.me/{YOUR_USERNAME}"))
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="special_services_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="special_services_menu"))
         text = f"خدمة: {service_name}\n\nلطلب هذه الخدمة والاستفسار عن التفاصيل، اضغط على الزر أدناه للتواصل المباشر مع الإدارة."
         send_or_replace_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
 
     elif data == "show_comm_tree":
         bot.answer_callback_query(call.id)
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         
         caption_text = "مخطط الشجرة الخاص بهندسة الاتصالات"
         safe_delete_message(chat_id, message_id)
@@ -885,7 +886,7 @@ def handle_callback_query(call):
             if i + 1 < len(AVAILABLE_SUBJECTS):
                 row.append(InlineKeyboardButton(AVAILABLE_SUBJECTS[i+1], callback_data=f"sub_{i+1}"))
             markup.row(*row)
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         
         bot.answer_callback_query(call.id)
         send_or_replace_message(chat_id, "اختر المادة المطلوبة من القائمة أدناه:", reply_markup=markup)
@@ -904,7 +905,7 @@ def handle_callback_query(call):
             ]
             markup.row(*row)
         markup.row(
-            InlineKeyboardButton("⬅️ السابق", callback_data="browse_subjects")
+            InlineKeyboardButton("السابق ↩️", callback_data="browse_subjects")
         )
 
         bot.answer_callback_query(call.id)
@@ -926,7 +927,7 @@ def handle_callback_query(call):
         markup = InlineKeyboardMarkup()
         if not res or not res[0]:
             markup.row(
-                InlineKeyboardButton("⬅️ السابق", callback_data=f"sub_{AVAILABLE_SUBJECTS.index(current_sub)}")
+                InlineKeyboardButton("السابق ↩️", callback_data=f"sub_{AVAILABLE_SUBJECTS.index(current_sub)}")
             )
             bot.answer_callback_query(call.id)
             send_or_replace_message(chat_id, f"المادة: {current_sub}\nالأسبوع {week_num}\n\nغير متاح حالياً.", reply_markup=markup)
@@ -947,7 +948,7 @@ def handle_callback_query(call):
         
         markup.row(InlineKeyboardButton("الدفع عبر شام كاش", callback_data="pay_sham_cash"))
         markup.row(
-            InlineKeyboardButton("⬅️ السابق", callback_data=f"sub_{AVAILABLE_SUBJECTS.index(current_sub)}")
+            InlineKeyboardButton("السابق ↩️", callback_data=f"sub_{AVAILABLE_SUBJECTS.index(current_sub)}")
         )
         
         bot.answer_callback_query(call.id)
@@ -965,7 +966,7 @@ def handle_callback_query(call):
         
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("إرسال إيصال التحويل", callback_data="verify_payment"))
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data=f"week_{week_num}"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data=f"week_{week_num}"))
         
         payment_caption = (
             f"طريقة الدفع عبر شام كاش\n"
@@ -985,7 +986,7 @@ def handle_callback_query(call):
             
         user_states[chat_id]["step"] = "waiting_for_receipt"
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⬅️ السابق", callback_data="pay_sham_cash"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="pay_sham_cash"))
         bot.answer_callback_query(call.id)
         send_or_replace_message(chat_id, "يرجى إرسال ملف التحويل أو صورة الإيصال الآن ليتم مراجعته وتفعيل اشتراكك من قِبل الإدارة.", parse_mode="Markdown", reply_markup=markup)
 
@@ -993,7 +994,7 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         about_text = "«يُقدّم بوت (Kashkoul Jami'i) مواكبة أسبوعية لكل مقرر دراسي تماشيًا مع ما يطرحه أستاذ المادة، وذلك عبر توفير ملفات رقمية مشروحة بشكل دوري ومستمر كل أسبوع؛ لضمان متابعة الطالب وعدم تشتته طوال الفصل الدراسي الأول. إضافةً إلى تقديم خدمات متميزة لكل طالب جامعي طوال مسيرته الأكاديمية.»"
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
         send_or_replace_message(chat_id, about_text, reply_markup=markup, parse_mode="Markdown")
 
     elif data == "main_menu":
@@ -1014,7 +1015,7 @@ def handle_callback_query(call):
         conn.close()
 
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("⏹️ العودة إلى القائمة", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
 
         if not receipts:
             bot.answer_callback_query(call.id, "لا توجد إيصالات معلقة.")

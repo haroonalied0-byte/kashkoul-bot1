@@ -45,16 +45,16 @@ from io import BytesIO
 
 TOKEN = "8874853282:AAGM0P7LTIglCOmA1S7JC9pJ_dBJfVl-Ips"
 ADMIN_ID = 8159938802
-YOUR_USFRNAMF = "KASHKOUL QPU"
+YOUR_USERNAME = "KASHKOUL_QPU"  # تصحيح اسم المتغير ليكون متوافقاً مع الأزرار
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 bot = telebot.TeleBot(TOKEN)
 QR_IMAGE_PATH = 'sham_cash.jpg'
 COMM_TREE_PATH = 'Communications_Tree.pdf'
 COMM_TREE_FILE_ID = None  
 
-# تهيئة عميل جيميناي بالطريقة القياسية
+# تهيئة عميل جيميناي بالطريقة القياسية الحديثة
 try:
-    ai_client = genai.Client(api_key=GEMINI_API_KEY)
+    ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 except Exception as e:
     print(f"AI Client Init Error: {e}")
     ai_client = None
@@ -79,13 +79,13 @@ AZKAR_LIST = [
     "[ اللَّهُمَّ صَلِّ وَسَلِّمْ وَبارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ ]"
 ]
 
-# دالة الاستعلام الرسمية والمحدثة بالنموذج الصحيح gemini-3.8-flash
+# دالة الاستعلام الرسمية والمحدثة بالنموذج الصحيح والسريع
 def ask_real_gemini(prompt_text):
     if not ai_client:
-        return "عذراً، لم يتم تهيئة اتصال الذكاء الاصطناعي."
+        return "عذراً، لم يتم تهيئة اتصال الذكاء الاصطناعي (تحقق من مفتاح GEMINI_API_KEY)."
     try:
         response = ai_client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt_text
         )
         if response and response.text:
@@ -1094,7 +1094,7 @@ def handle_receipt_file(message):
         
     order_data = user_pending_orders[chat_id]
     if time.time() > order_data['expire_time']:
-        del user_pending_orders[chat_id]
+        del user_pending_orders[chat, None] # تم تصحيح الخطأ البرمجي هنا
         user_states.pop(chat_id, None)
         send_or_replace_message(chat_id, "انتهت صلاحية الطلب. يرجى البدء من جديد.", reply_markup=get_main_inline_keyboard())
         return

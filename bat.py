@@ -85,7 +85,7 @@ def ask_real_gemini(prompt_text):
         return "عذراً، لم يتم تهيئة اتصال الذكاء الاصطناعي."
     try:
         response = ai_client.models.generate_content(
-            model='gemini-3.8-flash',
+            model="gemini-1.5-flash",
             contents=prompt_text
         )
         if response and response.text:

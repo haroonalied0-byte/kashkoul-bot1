@@ -45,7 +45,7 @@ from io import BytesIO
 
 TOKEN = "8874853282:AAGM0P7LTIglCOmA1S7JC9pJ_dBJfVl-Ips"
 ADMIN_ID = 8159938802
-YOUR_USERNAME = "KASHKOUL_QPU"  # تصحيح اسم المتغير ليكون متوافقاً مع الأزرار
+YOUR_USERNAME = "KASHKOUL_QPU"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 bot = telebot.TeleBot(TOKEN)
 QR_IMAGE_PATH = 'sham_cash.jpg'
@@ -79,13 +79,13 @@ AZKAR_LIST = [
     "[ اللَّهُمَّ صَلِّ وَسَلِّمْ وَبارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ ]"
 ]
 
-# دالة الاستعلام الرسمية والمحدثة بالنموذج الصحيح والسريع
+# دالة الاستعلام بالنموذج المحدث الموصى به
 def ask_real_gemini(prompt_text):
     if not ai_client:
         return "عذراً، لم يتم تهيئة اتصال الذكاء الاصطناعي (تحقق من مفتاح GEMINI_API_KEY)."
     try:
         response = ai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=prompt_text
         )
         if response and response.text:
@@ -1094,7 +1094,7 @@ def handle_receipt_file(message):
         
     order_data = user_pending_orders[chat_id]
     if time.time() > order_data['expire_time']:
-        del user_pending_orders[chat, None] # تم تصحيح الخطأ البرمجي هنا
+        del user_pending_orders[chat_id]
         user_states.pop(chat_id, None)
         send_or_replace_message(chat_id, "انتهت صلاحية الطلب. يرجى البدء من جديد.", reply_markup=get_main_inline_keyboard())
         return
@@ -1135,5 +1135,5 @@ def handle_receipt_file(message):
     user_states.pop(chat_id, None)
 
 if __name__ == '__main__':
-    print("البوت يعمل الآن بكامل الميزات وبنموذج gemini-2.5-flash النظامي...")
+    print("البوت يعمل الآن بكامل الميزات وبنموذج gemini-3.8-flash...")
     bot.infinity_polling()

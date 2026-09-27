@@ -52,7 +52,6 @@ QR_IMAGE_PATH = 'sham_cash.jpg'
 COMM_TREE_PATH = 'Communications_Tree.pdf'
 COMM_TREE_FILE_ID = None  
 
-# تهيئة عميل جيميناي بالطريقة القياسية الحديثة
 try:
     ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 except Exception as e:
@@ -155,22 +154,22 @@ def generate_sorted_code():
 def get_main_inline_keyboard():
     markup = InlineKeyboardMarkup()
     markup.row(
-        InlineKeyboardButton("تصفح المواد", callback_data="browse_subjects"),
-        InlineKeyboardButton("التنبيه الذكي", callback_data="schedule_menu")
+        InlineKeyboardButton("🔍\nتصفح المواد", callback_data="browse_subjects"),
+        InlineKeyboardButton("⏰\nالتنبيه الذكي", callback_data="schedule_menu")
     )
     markup.row(
-        InlineKeyboardButton("حاسبة المعدل", callback_data="gpa_calculator"),
-        InlineKeyboardButton("الخدمات الخاصة", callback_data="special_services_menu")
+        InlineKeyboardButton("🧮\nحاسبة المعدل", callback_data="gpa_calculator"),
+        InlineKeyboardButton("👑\nالخدمات الخاصة", callback_data="special_services_menu")
     )
     markup.row(
-        InlineKeyboardButton("شجرة المواد", callback_data="show_comm_tree"),
-        InlineKeyboardButton("أذكر الله", callback_data="say_azkar")
+        InlineKeyboardButton("🌿 شجرة المواد", callback_data="show_comm_tree"),
+        InlineKeyboardButton("📿\nأذكر الله", callback_data="say_azkar")
     )
     markup.row(
-        InlineKeyboardButton("🤖 محادثة الذكاء الاصطناعي", callback_data="ai_chat_start")
+        InlineKeyboardButton("🤖\nمحادثة الذكاء الاصطناعي", callback_data="ai_chat_start")
     )
     markup.row(
-        InlineKeyboardButton("نبذة عن البوت", callback_data="bot_about")
+        InlineKeyboardButton("✍️\nنبذة عن البوت", callback_data="bot_about")
     )
     return markup
 
@@ -233,7 +232,6 @@ def send_or_replace_message(chat_id, text, reply_markup=None, parse_mode=None, i
         print(f"Error sending message: {e}")
 
 def notify_subscribers_marketing_alert(course_name, week_number):
-    """إرسال تنبيه تسويقي عام للمشتركين بخصوص نزول المحتوى الجديد دون إرفاق الرابط المباشر"""
     try:
         conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
         cursor = conn.cursor()
@@ -244,7 +242,7 @@ def notify_subscribers_marketing_alert(course_name, week_number):
         for (u_id,) in subs:
             try:
                 markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("تصفح المواد والاشتراك", callback_data="browse_subjects"))
+                markup.row(InlineKeyboardButton("🔍\nتصفح المواد", callback_data="browse_subjects"))
                 bot.send_message(
                     u_id,
                     f"🔔 **تنبيه هام جداً!**\n\n"
@@ -322,7 +320,7 @@ def schedule_notification_worker():
                                     f"جهز نفسك، المحاضرة ستبدأ خلال 5 دقائق! بالتوفيق يا بطل!"
                                 )
                                 markup = InlineKeyboardMarkup()
-                                markup.row(InlineKeyboardButton("عرض جدولي الشخصي", callback_data="schedule_menu"))
+                                markup.row(InlineKeyboardButton("⏰\nالتنبيه الذكي", callback_data="schedule_menu"))
                                 bot.send_message(u_id, alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
                     except Exception as e:
@@ -397,7 +395,6 @@ def handle_text_messages(message):
                     ''', (c_name, week_num, c_link, c_link))
                     conn.commit()
                     count += 1
-                    # إرسال تنبيه تسويقي عام للمشتركين دون إرفاق الرابط المباشر
                     threading.Thread(target=notify_subscribers_marketing_alert, args=(c_name, week_num)).start()
 
             conn.close()
@@ -435,7 +432,7 @@ def handle_text_messages(message):
 
             user_states.pop(chat_id, None)
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("عرض جدولي الشخصي", callback_data="schedule_menu"))
+            markup.row(InlineKeyboardButton("⏰\nالتنبيه الذكي", callback_data="schedule_menu"))
             markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل موعدها بـ 5 دقائق فقط.", reply_markup=markup)
         except Exception:
@@ -466,7 +463,7 @@ def handle_text_messages(message):
 
             user_states.pop(chat_id, None)
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("عرض جدولي الشخصي", callback_data="schedule_menu"))
+            markup.row(InlineKeyboardButton("⏰\nالتنبيه الذكي", callback_data="schedule_menu"))
             markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تم تحديث بيانات المحاضرة بنجاح!", reply_markup=markup)
         except Exception:
@@ -496,7 +493,7 @@ def handle_text_messages(message):
             user_states.pop(chat_id, None)
 
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("حساب معدل جديد", callback_data="gpa_calculator"))
+            markup.row(InlineKeyboardButton("🧮\nحاسبة المعدل", callback_data="gpa_calculator"))
             markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="main_menu"))
             
             if gpa < 55:
@@ -572,7 +569,7 @@ def handle_text_messages(message):
             user_states.pop(chat_id, None)
 
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("حساب معدل جديد", callback_data="gpa_calculator"))
+            markup.row(InlineKeyboardButton("🧮\nحاسبة المعدل", callback_data="gpa_calculator"))
             markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="main_menu"))
             
             fail_threshold = 2.0 if prev_gpa <= 4.0 else 55.0
@@ -1161,5 +1158,5 @@ def handle_receipt_file(message):
     user_states.pop(chat_id, None)
 
 if __name__ == '__main__':
-    print("البوت يعمل الآن مع النظام التجاري والتسويقي الجديد...")
+    print("البوت يعمل الآن مع التصميم المخصص الجديد للأزرار...")
     bot.infinity_polling()

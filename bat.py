@@ -45,7 +45,7 @@ from io import BytesIO
 
 TOKEN = "8874853282:AAGM0P7LTIglCOmA1S7JC9pJ_dBJfVl-Ips"
 ADMIN_ID = 8159938802
-YOUR_USERNAME = "KASHKOUL_QPU"
+YOUR_USERNAME = "KASHKOULQPU"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 bot = telebot.TeleBot(TOKEN)
 QR_IMAGE_PATH = 'sham_cash.jpg'
@@ -257,6 +257,27 @@ def notify_subscribers_new_week(course_name, week_number, secure_link):
     except Exception as e:
         print(f"Error in notification thread: {e}")
 
+def parse_time_12h_to_minutes(time_str):
+    """دالة لتحويل صيغة الـ 12 ساعة (مثال: 11:00 صباحاً أو 1:00 ظهراً) إلى دقائق لمقارنة وقت التنبيه"""
+    try:
+        time_str = time_str.strip()
+        is_pm = "مساءً" in time_str or "ظهراً" in time_str or "مساء" in time_str or "ظهر" in time_str
+        is_am = "صباحاً" in time_str or "صباح" in time_str
+        
+        # تنظيف النص من الكلمات العربية لاستخراج الأرقام فقط
+        clean_str = time_str.replace("صباحاً", "").replace("صباح", "").replace("مساءً", "").replace("مساء", "").replace("ظهراً", "").replace("ظهر", "").strip()
+        parts = clean_str.split(':')
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 else 0
+        
+        if is_pm and h < 12:
+            h += 12
+        if is_am and h == 12:
+            h = 0
+        return h * 60 + m
+    except Exception:
+        return 0
+
 def schedule_notification_worker():
     notified_today = set()
     while True:
@@ -283,8 +304,7 @@ def schedule_notification_worker():
             for s_id, u_id, d_name, s_name, l_type, hall, start_t, end_t in all_schedules:
                 if d_name and d_name.strip().lower() == today_day_name.lower():
                     try:
-                        sh, sm = map(int, start_t.split(':'))
-                        start_total_mins = sh * 60 + sm
+                        start_total_mins = parse_time_12h_to_minutes(start_t)
                         current_total_mins = now.hour * 60 + now.minute
 
                         alert_before_mins = start_total_mins - 5
@@ -416,7 +436,7 @@ def handle_text_messages(message):
             markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل موعدها بـ 5 دقائق فقط.", reply_markup=markup)
         except Exception:
-            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 3 | 10:00 | 11:00`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً (صيغة 12 ساعة):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 3 | 10:00 صباحاً | 11:00 ظهراً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
 
     if state == "waiting_for_edit_schedule_details":
@@ -711,7 +731,7 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
         cursor = conn.cursor()
-        cursor.execute("SELECT id, day_name, subject_name, lecture_type, hall_name, start_time, end_time FROM smart_schedule WHERE user_id = ? ORDER BY CASE day_name WHEN 'السبت' THEN 1 WHEN 'الأحد' THEN 2 WHEN 'الإثنين' THEN 3 WHEN 'الثلاثاء' THEN 4 ELSE 5 END, start_time ASC", (chat_id,))
+        cursor.execute("SELECT id, day_name, subject_name, lecture_type, hall_name, start_time, end_time FROM smart_schedule WHERE user_id = ? ORDER BY CASE day_name WHEN 'السبت' THEN 1 WHEN 'الأحد' THEN 2 WHEN 'الإثنين' THEN 3 WHEN 'الثلاثاء' THEN 4 ELSE 5 END, id ASC", (chat_id,))
         schedules = cursor.fetchall()
         conn.close()
 
@@ -742,7 +762,7 @@ def handle_callback_query(call):
         user_states[chat_id] = {"step": "waiting_for_schedule_details"}
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="schedule_menu"))
-        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 10:00 | 11:00`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
+        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً (بصيغة 12 ساعة):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 10:00 صباحاً | 11:00 ظهراً`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "edit_schedule_select":
         bot.answer_callback_query(call.id)

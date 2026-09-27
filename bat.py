@@ -46,8 +46,7 @@ from io import BytesIO
 TOKEN = "8874853282:AAGM0P7LTIglCOmA1S7JC9pJ_dBJfVl-Ips"
 ADMIN_ID = 8159938802
 YOUR_USFRNAMF = "KASHKOUL QPU"
-GEMINT_APT_KEY = "AIzaSyCtQOjvGnzOE4Nbeo9BNlpL2jRde3UNllk"
-
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyCtQOjvGnzOE4Nbeo9BNlpL2jRde3UNllk")
 bot = telebot.TeleBot(TOKEN)
 QR_IMAGE_PATH = 'sham_cash.jpg'
 COMM_TREE_PATH = 'Communications_Tree.pdf'

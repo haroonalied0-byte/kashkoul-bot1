@@ -79,7 +79,6 @@ AZKAR_LIST = [
     "[ اللَّهُمَّ صَلِّ وَسَلِّمْ وَبارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ ]"
 ]
 
-# دالة الاستعلام مع التعامل الذكي مع خطأ نفاد الحصة (429)
 def ask_real_gemini(prompt_text):
     if not ai_client:
         return "عذراً، لم يتم تهيئة اتصال الذكاء الاصطناعي (تحقق من مفتاح GEMINI_API_KEY)."
@@ -233,21 +232,26 @@ def send_or_replace_message(chat_id, text, reply_markup=None, parse_mode=None, i
     except Exception as e:
         print(f"Error sending message: {e}")
 
-def notify_subscribers_new_week(course_name, week_number, secure_link):
+def notify_subscribers_marketing_alert(course_name, week_number):
+    """إرسال تنبيه تسويقي عام للمشتركين بخصوص نزول المحتوى الجديد دون إرفاق الرابط المباشر"""
     try:
         conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
         cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT user_id FROM user_subscriptions WHERE course_name = ?", (course_name,))
+        cursor.execute("SELECT DISTINCT user_id FROM user_subscriptions")
         subs = cursor.fetchall()
         conn.close()
 
         for (u_id,) in subs:
             try:
                 markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("رابط ملف الأسبوع الجديد", url=secure_link))
+                markup.row(InlineKeyboardButton("تصفح المواد والاشتراك", callback_data="browse_subjects"))
                 bot.send_message(
                     u_id,
-                    f"تنبيه هام! تم رفع محتوى جديد:\n\nالمقرر: {course_name}\nالأسبوع: {week_number}\n\nالمحتوى أصبح متاحاً وجاهزاً للمتابعة لضمان تفوقك!",
+                    f"🔔 **تنبيه هام جداً!**\n\n"
+                    f"تم إصدار وتحديث محتوى جديد:\n"
+                    f"📚 المقرر: `{course_name}`\n"
+                    f"📌 الأسبوع: `{week_number}`\n\n"
+                    f"يمكنك الاشتراك الآن للوصول إلى المحتوى ومتابعة الفصل الدراسي بشكل منتظم وضمان تفوقك!",
                     parse_mode="Markdown",
                     reply_markup=markup,
                     protect_content=True
@@ -255,16 +259,14 @@ def notify_subscribers_new_week(course_name, week_number, secure_link):
             except Exception:
                 pass
     except Exception as e:
-        print(f"Error in notification thread: {e}")
+        print(f"Error in marketing notification thread: {e}")
 
 def parse_time_12h_to_minutes(time_str):
-    """دالة لتحويل صيغة الـ 12 ساعة (مثال: 11:00 صباحاً أو 1:00 ظهراً) إلى دقائق لمقارنة وقت التنبيه"""
     try:
         time_str = time_str.strip()
         is_pm = "مساءً" in time_str or "ظهراً" in time_str or "مساء" in time_str or "ظهر" in time_str
         is_am = "صباحاً" in time_str or "صباح" in time_str
         
-        # تنظيف النص من الكلمات العربية لاستخراج الأرقام فقط
         clean_str = time_str.replace("صباحاً", "").replace("صباح", "").replace("مساءً", "").replace("مساء", "").replace("ظهراً", "").replace("ظهر", "").strip()
         parts = clean_str.split(':')
         h = int(parts[0])
@@ -395,7 +397,8 @@ def handle_text_messages(message):
                     ''', (c_name, week_num, c_link, c_link))
                     conn.commit()
                     count += 1
-                    threading.Thread(target=notify_subscribers_new_week, args=(c_name, week_num, c_link)).start()
+                    # إرسال تنبيه تسويقي عام للمشتركين دون إرفاق الرابط المباشر
+                    threading.Thread(target=notify_subscribers_marketing_alert, args=(c_name, week_num)).start()
 
             conn.close()
             user_states.pop(chat_id, None)
@@ -404,7 +407,7 @@ def handle_text_messages(message):
             markup.row(InlineKeyboardButton("إدارة الروابط والأسابيع", callback_data="admin_add_link_menu"))
             markup.row(InlineKeyboardButton("⬅️ رجوع لوحة الإدارة", callback_data="main_menu"))
             
-            send_or_replace_message(chat_id, f"تم بنجاح تحديث وإضافة روابط (الأسبوع {week_num}) لـ ({count}) مادة وإرسال الإشعارات للمشتركين!", reply_markup=markup)
+            send_or_replace_message(chat_id, f"تم بنجاح تحديث وإضافة روابط (الأسبوع {week_num}) لـ ({count}) مادة وإرسال الإشعارات التسويقية للمشتركين!", reply_markup=markup)
         except Exception as e:
             send_or_replace_message(chat_id, f"حدث خطأ في الصيغة: {e}\nأرسل كل مادة في سطر بالشكل:\n`اسم المادة | الرابط`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
@@ -436,7 +439,7 @@ def handle_text_messages(message):
             markup.row(InlineKeyboardButton("⬅️ رجوع", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل موعدها بـ 5 دقائق فقط.", reply_markup=markup)
         except Exception:
-            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً (صيغة 12 ساعة):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 3 | 10:00 صباحاً | 11:00 ظهراً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً (صيغة 12 ساعة):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 10:00 صباحاً | 11:00 ظهراً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
 
     if state == "waiting_for_edit_schedule_details":
@@ -1158,5 +1161,5 @@ def handle_receipt_file(message):
     user_states.pop(chat_id, None)
 
 if __name__ == '__main__':
-    print("البوت يعمل الآن مع معالجة ذكية لأخطاء الحصة المجانية...")
+    print("البوت يعمل الآن مع النظام التجاري والتسويقي الجديد...")
     bot.infinity_polling()

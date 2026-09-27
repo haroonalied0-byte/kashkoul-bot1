@@ -79,7 +79,7 @@ AZKAR_LIST = [
     "[ اللَّهُمَّ صَلِّ وَسَلِّمْ وَبارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ ]"
 ]
 
-# دالة الاستعلام بالنموذج المحدث الموصى به
+# دالة الاستعلام مع التعامل الذكي مع خطأ نفاد الحصة (429)
 def ask_real_gemini(prompt_text):
     if not ai_client:
         return "عذراً، لم يتم تهيئة اتصال الذكاء الاصطناعي (تحقق من مفتاح GEMINI_API_KEY)."
@@ -93,6 +93,9 @@ def ask_real_gemini(prompt_text):
         else:
             return "لم يتم استلام رد من النموذج."
     except Exception as e:
+        error_str = str(e)
+        if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+            return "عذراً، لقد استهلكنا الحد المجاني اليوم، يرجى المحاولة غداً أو بعد قليل."
         return f"عذراً، حدث خطأ أثناء الاتصال: {e}"
 
 def init_db():
@@ -1135,5 +1138,5 @@ def handle_receipt_file(message):
     user_states.pop(chat_id, None)
 
 if __name__ == '__main__':
-    print("البوت يعمل الآن بكامل الميزات وبنموذج gemini-3.8-flash...")
+    print("البوت يعمل الآن مع معالجة ذكية لأخطاء الحصة المجانية...")
     bot.infinity_polling()

@@ -5,7 +5,27 @@ import random
 import sqlite3
 import threading
 from datetime import datetime, timedelta
+from flask import Flask
+from threading import Thread
 
+# سيرفر وهمي لتشغيل Web Service على Render بدون مشاكل
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running 24/7!"
+
+def run():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+keep_alive()
+
+# استيراد مكتبات البوت والـ Gemini
 try:
     import telebot
 except ImportError:
@@ -25,8 +45,8 @@ from io import BytesIO
 
 TOKEN = "8874853282:AAGM0P7LTIglCOmA1S7JC9pJ_dBJfVl-Ips"
 ADMIN_ID = 8159938802
-YOUR_USERNAME = "KASHKOULQPU"
-GEMINI_API_KEY = "AIzaSyCtQOjvGnzOE4Nbeo9BNlpL2jRde3UNllk"
+YOUR_USFRNAMF = "KASHKOUL QPU"
+GEMINT_APT_KEY = "AIzaSyCtQOjvGnzOE4Nbeo9BNlpL2jRde3UNllk"
 
 bot = telebot.TeleBot(TOKEN)
 QR_IMAGE_PATH = 'sham_cash.jpg'

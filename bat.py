@@ -19,7 +19,7 @@ def run():
     app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
-    t = Thread(target=run)
+    t = threading.Thread(target=run)
     t.start()
 
 keep_alive()
@@ -228,41 +228,9 @@ def send_or_replace_message(chat_id, text, reply_markup=None, parse_mode=None, i
     except Exception as e:
         print(f"Error sending message: {e}")
 
-def notify_subscribers_marketing_alert(course_name, week_number):
-    try:
-        conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
-        cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT user_id FROM user_subscriptions")
-        subs = cursor.fetchall()
-        conn.close()
-
-        for (u_id,) in subs:
-            try:
-                markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("🔍 تصفح المواد", callback_data="browse_subjects"))
-                bot.send_message(
-                    u_id,
-                    f"🔔 **تنبيه هام جداً!**\n\n"
-                    f"تم إصدار وتحديث محتوى جديد:\n"
-                    f"📚 المقرر: `{course_name}`\n"
-                    f"📌 الأسبوع: `{week_number}`\n\n"
-                    f"يمكنك الاشتراك الآن للوصول إلى المحتوى ومتابعة الفصل الدراسي بشكل منتظم وضمان تفوقك!",
-                    parse_mode="Markdown",
-                    reply_markup=markup,
-                    protect_content=True
-                )
-            except Exception:
-                pass
-    except Exception as e:
-        print(f"Error in marketing notification thread: {e}")
-
 def parse_time_12h_to_minutes(time_str):
-    """
-    تحويل دقيق ومحسن لأوقات (صباحاً، ظهراً، مساءً) إلى دقائق إجمالية من منتصف الليل (0 إلى 1439).
-    """
     try:
         time_str = time_str.strip()
-        # تنظيف الكلمات الدلالية
         is_pm = any(w in time_str for w in ["مساءً", "ظهراً", "مساء", "ظهر"])
         is_am = any(w in time_str for w in ["صباحاً", "صباح"])
         
@@ -276,12 +244,10 @@ def parse_time_12h_to_minutes(time_str):
         h = int(parts[0])
         m = int(parts[1]) if len(parts) > 1 else 0
         
-        # معالجة نظام الـ 12 ساعة
         if is_pm and h < 12:
             h += 12
         if is_am and h == 12:
             h = 0
-        # إذا لم يتم تحديد صباحاً أو مساءً صراحة، نعتبر الساعات الصباحية كما هي (أو حسب السياق)
         return h * 60 + m
     except Exception as e:
         print(f"Parse time error for '{time_str}': {e}")
@@ -318,7 +284,6 @@ def schedule_notification_worker():
                         start_total_mins = parse_time_12h_to_minutes(start_t)
                         end_total_mins = parse_time_12h_to_minutes(end_t)
                         
-                        # 1. التنبيه الأول: قبل البدء بـ 5 دقائق
                         alert_start_mins = start_total_mins - 5
                         
                         if current_total_mins == alert_start_mins:
@@ -336,7 +301,6 @@ def schedule_notification_worker():
                                 markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
                                 bot.send_message(u_id, alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
-                        # 2. التنبيه الثاني: عند موعد الانتهاء تماماً
                         if current_total_mins == end_total_mins:
                             notif_end_key = f"end_{s_id}_{today_date_str}"
                             if notif_end_key not in notified_today:
@@ -358,7 +322,6 @@ def schedule_notification_worker():
         except Exception as e:
             print(f"Error in schedule worker: {e}")
             
-        # فحص كل 15 ثانية لضمان عدم تفويت أي دقيقة
         time.sleep(15)
 
 threading.Thread(target=schedule_notification_worker, daemon=True).start()
@@ -427,37 +390,6 @@ def handle_text_messages(message):
             send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل موعد البدء بـ 5 دقائق، وعند موعد الانتهاء تماماً.", reply_markup=markup)
         except Exception:
             send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 3:00 صباحاً | 4:05 صباحاً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
-        return
-
-    if state == "waiting_for_edit_schedule_details":
-        if text == "إلغاء":
-            user_states.pop(chat_id, None)
-            send_or_replace_message(chat_id, "تم إلغاء التعديل.", reply_markup=get_main_inline_keyboard())
-            return
-        try:
-            parts = text.split('|')
-            s_id = user_states.get(chat_id, {}).get("edit_schedule_id")
-            day_name = parts[0].strip()
-            s_name = parts[1].strip()
-            l_type = parts[2].strip()
-            hall = parts[3].strip()
-            start_t = parts[4].strip()
-            end_t = parts[5].strip()
-
-            conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
-            cursor = conn.cursor()
-            cursor.execute("UPDATE smart_schedule SET day_name = ?, subject_name = ?, lecture_type = ?, hall_name = ?, start_time = ?, end_time = ? WHERE id = ? AND user_id = ?", 
-                           (day_name, s_name, l_type, hall, start_t, end_t, s_id, chat_id))
-            conn.commit()
-            conn.close()
-
-            user_states.pop(chat_id, None)
-            markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
-            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
-            send_or_replace_message(chat_id, f"تم تحديث بيانات المحاضرة بنجاح!", reply_markup=markup)
-        except Exception:
-            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
 
     if state == "waiting_for_semester_gpa":
@@ -544,7 +476,6 @@ def handle_callback_query(call):
         markup.row(InlineKeyboardButton("إضافة محاضرة للجدول", callback_data="add_schedule_item"))
         
         if schedules:
-            markup.row(InlineKeyboardButton("تعديل محاضرة", callback_data="edit_schedule_select"))
             markup.row(InlineKeyboardButton("تفريغ الجدول بالكامل", callback_data="clear_schedule"))
             
         markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
@@ -834,7 +765,7 @@ def handle_callback_query(call):
                 target_user_id, 
                 f"تم قبول إيصالك بنجاح وتفعيل:\n{c_name} (الأسبوع {w_num}).\n\nرابط الملف الخاص بك جاهز:", 
                 reply_markup=link_markup, 
-                parse_mode="Markdown",
+                parse_Mode="Markdown",
                 protect_content=True
             )
             motiv_text = "💪 عاش يا بطل!\nخطوة ممتازة نحو التفوق والنجاح. نَظِّم وقتك، واقرأ الشرح بتركيز، وكن على أتم الاستعداد لتحقيق أعلى الدرجات هذا الفصل! نحن معك دائماً لضمان تميزك، موفق إن شاء الله. ❤️"
@@ -862,7 +793,7 @@ def handle_callback_query(call):
         conn.commit()
         conn.close()
 
-        bot.answer_clock_query(call.id, "تم الرفض.")
+        bot.answer_callback_query(call.id, "تم الرفض.")
         send_or_replace_message(chat_id, f"تم رفض إيصال المستخدم `{target_user_id}`.", reply_markup=get_admin_inline_keyboard())
         try:
             bot.send_message(target_user_id, "عذراً، تم رفض الإيصال من قبل الإدارة.", protect_content=True)

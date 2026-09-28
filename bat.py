@@ -230,24 +230,31 @@ def send_or_replace_message(chat_id, text, reply_markup=None, parse_mode=None, i
 
 def parse_time_12h_to_minutes(time_str):
     try:
-        time_str = time_str.strip()
-        is_pm = any(w in time_str for w in ["مساءً", "ظهراً", "مساء", "ظهر"])
-        is_am = any(w in time_str for w in ["صباحاً", "صباح"])
+        time_str = str(time_str).strip().upper()
+        # تنظيف الأرقام الهندية إن وجدت وتحويلها لإنجليزية
+        time_str = (time_str
+                    .replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4')
+                    .replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9'))
         
-        clean_str = (time_str
-                     .replace("صباحاً", "").replace("صباح", "")
-                     .replace("مساءً", "").replace("مساء", "")
-                     .replace("ظهراً", "").replace("ظهر", "")
-                     .strip())
+        is_pm = "PM" in time_str or "مساء" in time_str or "مساءً" in time_str or "ظهراً" in time_str
+        is_am = "AM" in time_str or "صباحاً" in time_str or "صباح" in time_str
         
-        parts = clean_str.split(':')
-        h = int(parts[0])
-        m = int(parts[1]) if len(parts) > 1 else 0
+        time_str = (time_str
+                    .replace("AM", "").replace("PM", "")
+                    .replace("صباحاً", "").replace("صباح", "")
+                    .replace("مساءً", "").replace("مساء", "")
+                    .replace("ظهراً", "").replace("ظهر", "")
+                    .strip())
+        
+        parts = time_str.split(':')
+        h = int(parts[0].strip())
+        m = int(parts[1].strip()) if len(parts) > 1 else 0
         
         if is_pm and h < 12:
             h += 12
         if is_am and h == 12:
             h = 0
+            
         return h * 60 + m
     except Exception as e:
         print(f"Parse time error for '{time_str}': {e}")
@@ -272,7 +279,9 @@ def schedule_notification_worker():
             today_day_name = days_map.get(now.strftime("%A"), "")
             today_date_str = now.strftime("%Y-%m-%d")
 
-            # التحقق أن اليوم هو أحد أيام دوام الكلية المحددة فقط (السبت، الأحد، الإثنين، الثلاثاء)
+            if len(notified_today) > 100:
+                notified_today.clear()
+
             if today_day_name in valid_college_days:
                 conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
                 cursor = conn.cursor()
@@ -288,7 +297,6 @@ def schedule_notification_worker():
                             start_total_mins = parse_time_12h_to_minutes(start_t)
                             end_total_mins = parse_time_12h_to_minutes(end_t)
                             
-                            # تنبيه البدء قبل بـ 5 دقائق بالضبط (ضمن نافذة مرنة لضمان عدم تفويته)
                             alert_start_mins = start_total_mins - 5
                             notif_key = f"start_{s_id}_{today_date_str}"
                             if notif_key not in notified_today:
@@ -305,7 +313,6 @@ def schedule_notification_worker():
                                     markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
                                     bot.send_message(u_id, alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
-                            # تنبيه الانتهاء عند وقت الانتهاء تماماً
                             notif_end_key = f"end_{s_id}_{today_date_str}"
                             if notif_end_key not in notified_today:
                                 if end_total_mins <= current_total_mins <= end_total_mins + 2:
@@ -394,7 +401,7 @@ def handle_text_messages(message):
             markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل البدء بـ 5 دقائق، وعند الانتهاء تماماً.", reply_markup=markup)
         except Exception:
-            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 3:00 صباحاً | 4:05 صباحاً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`الإثنين | فيزياء 1 | نظري | قاعة 1 | 4:10 AM | 4:20 AM`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
 
     if state == "waiting_for_semester_gpa":
@@ -503,7 +510,7 @@ def handle_callback_query(call):
         user_states[chat_id] = {"step": "waiting_for_schedule_details"}
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
-        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً (أيام الدوام: السبت، الأحد، الإثنين، الثلاثاء):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 3:00 صباحاً | 4:05 صباحاً`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
+        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`الإثنين | فيزياء 1 | نظري | قاعة 1 | 4:10 AM | 4:20 AM`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "clear_schedule":
         bot.answer_callback_query(call.id)

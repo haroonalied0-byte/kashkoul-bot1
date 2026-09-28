@@ -255,6 +255,8 @@ def parse_time_12h_to_minutes(time_str):
 
 def schedule_notification_worker():
     notified_today = set()
+    valid_college_days = ["السبت", "الأحد", "الإثنين", "الثلاثاء"]
+    
     while True:
         try:
             now = datetime.now()
@@ -270,59 +272,62 @@ def schedule_notification_worker():
             today_day_name = days_map.get(now.strftime("%A"), "")
             today_date_str = now.strftime("%Y-%m-%d")
 
-            conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, user_id, day_name, subject_name, lecture_type, hall_name, start_time, end_time FROM smart_schedule")
-            all_schedules = cursor.fetchall()
-            conn.close()
+            # التحقق أن اليوم هو أحد أيام دوام الكلية المحددة فقط (السبت، الأحد، الإثنين، الثلاثاء)
+            if today_day_name in valid_college_days:
+                conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, user_id, day_name, subject_name, lecture_type, hall_name, start_time, end_time FROM smart_schedule")
+                all_schedules = cursor.fetchall()
+                conn.close()
 
-            current_total_mins = now.hour * 60 + now.minute
+                current_total_mins = now.hour * 60 + now.minute
 
-            for s_id, u_id, d_name, s_name, l_type, hall, start_t, end_t in all_schedules:
-                if d_name and d_name.strip().lower() == today_day_name.lower():
-                    try:
-                        start_total_mins = parse_time_12h_to_minutes(start_t)
-                        end_total_mins = parse_time_12h_to_minutes(end_t)
-                        
-                        alert_start_mins = start_total_mins - 5
-                        
-                        if current_total_mins == alert_start_mins:
+                for s_id, u_id, d_name, s_name, l_type, hall, start_t, end_t in all_schedules:
+                    if d_name and d_name.strip().lower() == today_day_name.lower():
+                        try:
+                            start_total_mins = parse_time_12h_to_minutes(start_t)
+                            end_total_mins = parse_time_12h_to_minutes(end_t)
+                            
+                            # تنبيه البدء قبل بـ 5 دقائق بالضبط (ضمن نافذة مرنة لضمان عدم تفويته)
+                            alert_start_mins = start_total_mins - 5
                             notif_key = f"start_{s_id}_{today_date_str}"
                             if notif_key not in notified_today:
-                                notified_today.add(notif_key)
-                                alert_text = (
-                                    f"⏰ **تنبيه بقرب موعد المحاضرة!**\n\n"
-                                    f"📚 المادة: `{s_name}` ({l_type})\n"
-                                    f"🏛️ القاعة: `{hall}`\n"
-                                    f"⏳ الموعد: من `{start_t}` إلى `{end_t}`\n\n"
-                                    f"جهز نفسك، المحاضرة ستبدأ خلال 5 دقائق! بالتوفيق يا بطل!"
-                                )
-                                markup = InlineKeyboardMarkup()
-                                markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
-                                bot.send_message(u_id, alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
+                                if alert_start_mins <= current_total_mins <= alert_start_mins + 2:
+                                    notified_today.add(notif_key)
+                                    alert_text = (
+                                        f"⏰ **تنبيه بقرب موعد المحاضرة!**\n\n"
+                                        f"📚 المادة: `{s_name}` ({l_type})\n"
+                                        f"🏛️ القاعة: `{hall}`\n"
+                                        f"⏳ الموعد: من `{start_t}` إلى `{end_t}`\n\n"
+                                        f"جهز نفسك، المحاضرة ستبدأ خلال 5 دقائق! بالتوفيق يا بطل!"
+                                    )
+                                    markup = InlineKeyboardMarkup()
+                                    markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
+                                    bot.send_message(u_id, alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
-                        if current_total_mins == end_total_mins:
+                            # تنبيه الانتهاء عند وقت الانتهاء تماماً
                             notif_end_key = f"end_{s_id}_{today_date_str}"
                             if notif_end_key not in notified_today:
-                                notified_today.add(notif_end_key)
-                                end_alert_text = (
-                                    f"⏳ **تنبيه انتهاء المحاضرة!**\n\n"
-                                    f"📚 المادة: `{s_name}` ({l_type})\n"
-                                    f"🏛️ القاعة: `{hall}`\n"
-                                    f"⏰ انتهى موعد المحاضرة (كانت من `{start_t}` إلى `{end_t}`).\n\n"
-                                    f"شارفت الحصة على الانتهاء أو انتهت الآن، نتمنى أن تكون قد استفدت بكامل التركيز!"
-                                )
-                                markup = InlineKeyboardMarkup()
-                                markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
-                                bot.send_message(u_id, end_alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
+                                if end_total_mins <= current_total_mins <= end_total_mins + 2:
+                                    notified_today.add(notif_end_key)
+                                    end_alert_text = (
+                                        f"⏳ **تنبيه انتهاء المحاضرة!**\n\n"
+                                        f"📚 المادة: `{s_name}` ({l_type})\n"
+                                        f"🏛️ القاعة: `{hall}`\n"
+                                        f"⏰ انتهى موعد المحاضرة تماماً (كانت من `{start_t}` إلى `{end_t}`).\n\n"
+                                        f"نتمنى أن تكون قد استفدت بكامل التركيز!"
+                                    )
+                                    markup = InlineKeyboardMarkup()
+                                    markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
+                                    bot.send_message(u_id, end_alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
-                    except Exception as e:
-                        print(f"Time calculation error: {e}")
+                        except Exception as e:
+                            print(f"Time calculation error: {e}")
 
         except Exception as e:
             print(f"Error in schedule worker: {e}")
             
-        time.sleep(15)
+        time.sleep(10)
 
 threading.Thread(target=schedule_notification_worker, daemon=True).start()
 
@@ -387,7 +392,7 @@ def handle_text_messages(message):
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
             markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
-            send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل موعد البدء بـ 5 دقائق، وعند موعد الانتهاء تماماً.", reply_markup=markup)
+            send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل البدء بـ 5 دقائق، وعند الانتهاء تماماً.", reply_markup=markup)
         except Exception:
             send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 3:00 صباحاً | 4:05 صباحاً`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
@@ -424,7 +429,7 @@ def handle_text_messages(message):
                     f"- إجمالي الساعات: {total_hours}\n"
                     f"- المعدل المحسوب: {gpa:.2f}\n\n"
                     f"لا تقلق يا بطل!\n"
-                    f"البدايات قد تكون صعبة، لكنها فرصة حقيقية لتصحيح المسار ومضاعفة الجهد في المواد القادمة. أنت قادر على التعويض وتحقيق أفضل النتائج في القادم إن شاء الله!"
+                    f"البدايات قد تكون صعبة، لكنها فرصة حقيقية لتصحيح المسار ومضاعفة الجهد في المواد القادمة. أنت قادر على التعويض وتطوير أدائك في القادم إن شاء الله!"
                 )
             else:
                 status_message = (
@@ -480,9 +485,9 @@ def handle_callback_query(call):
             
         markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
 
-        text = "📅 **جدول المحاضرات الشخصي الذكي**\n\n"
+        text = "📅 **جدول المحاضرات الشخصي الذكي (أيام الدوام: السبت، الأحد، الإثنين، الثلاثاء)**\n\n"
         if not schedules:
-            text += "جدولك فارغ حالياً. قم بإضافة محاضراتك لتتلقى تنبيهات تلقائية قبل البدء بـ 5 دقائق وعند الانتهاء."
+            text += "جدولك فارغ حالياً. قم بإضافة محاضراتك لتتلقى تنبيهات تلقائية قبل البدء بـ 5 دقائق وعند الانتهاء تماماً."
         else:
             current_day = ""
             for s_id, d_name, s_name, l_type, hall, start_t, end_t in schedules:
@@ -498,7 +503,7 @@ def handle_callback_query(call):
         user_states[chat_id] = {"step": "waiting_for_schedule_details"}
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
-        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 3:00 صباحاً | 4:05 صباحاً`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
+        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً (أيام الدوام: السبت، الأحد، الإثنين، الثلاثاء):\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`السبت | فيزياء 1 | نظري | قاعة 1 | 3:00 صباحاً | 4:05 صباحاً`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "clear_schedule":
         bot.answer_callback_query(call.id)
@@ -765,7 +770,7 @@ def handle_callback_query(call):
                 target_user_id, 
                 f"تم قبول إيصالك بنجاح وتفعيل:\n{c_name} (الأسبوع {w_num}).\n\nرابط الملف الخاص بك جاهز:", 
                 reply_markup=link_markup, 
-                parse_Mode="Markdown",
+                parse_mode="Markdown",
                 protect_content=True
             )
             motiv_text = "💪 عاش يا بطل!\nخطوة ممتازة نحو التفوق والنجاح. نَظِّم وقتك، واقرأ الشرح بتركيز، وكن على أتم الاستعداد لتحقيق أعلى الدرجات هذا الفصل! نحن معك دائماً لضمان تميزك، موفق إن شاء الله. ❤️"

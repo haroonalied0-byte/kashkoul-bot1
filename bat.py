@@ -4,7 +4,7 @@ import time
 import random
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask
 
 # سيرفر وهمي لتشغيل Web Service على Render بدون مشاكل
@@ -231,12 +231,11 @@ def send_or_replace_message(chat_id, text, reply_markup=None, parse_mode=None, i
 def parse_time_12h_to_minutes(time_str):
     try:
         time_str = str(time_str).strip().upper()
-        # تنظيف الأرقام الهندية إن وجدت وتحويلها لإنجليزية
         time_str = (time_str
                     .replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4')
                     .replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9'))
         
-        is_pm = "PM" in time_str or "مساء" in time_str or "مساءً" in time_str or "ظهراً" in time_str
+        is_pm = "PM" in time_str or "مساءً" in time_str or "مساء" in time_str or "ظهراً" in time_str or "ظهر" in time_str
         is_am = "AM" in time_str or "صباحاً" in time_str or "صباح" in time_str
         
         time_str = (time_str
@@ -266,7 +265,8 @@ def schedule_notification_worker():
     
     while True:
         try:
-            now = datetime.now()
+            # تصحيح التوقيت المحلي لمنع أي تأخير (ساعة سوريا +3 أو التوقيت المحلي للخادم)
+            now = datetime.now() + timedelta(hours=3) # تعديل تلقائي لتوقيت دمشق الحالي
             days_map = {
                 "Saturday": "السبت",
                 "Sunday": "الأحد",
@@ -295,38 +295,39 @@ def schedule_notification_worker():
                     if d_name and d_name.strip().lower() == today_day_name.lower():
                         try:
                             start_total_mins = parse_time_12h_to_minutes(start_t)
-                            end_total_mins = parse_time_12h_to_minutes(end_t)
                             
+                            # 1. تنبيه قبل بدء المحاضرة بـ 5 دقائق بالضبط
                             alert_start_mins = start_total_mins - 5
-                            notif_key = f"start_{s_id}_{today_date_str}"
+                            notif_key = f"start5_{s_id}_{today_date_str}"
                             if notif_key not in notified_today:
-                                if alert_start_mins <= current_total_mins <= alert_start_mins + 2:
+                                if alert_start_mins <= current_total_mins <= alert_start_mins + 1:
                                     notified_today.add(notif_key)
                                     alert_text = (
                                         f"⏰ **تنبيه بقرب موعد المحاضرة!**\n\n"
                                         f"📚 المادة: `{s_name}` ({l_type})\n"
                                         f"🏛️ القاعة: `{hall}`\n"
                                         f"⏳ الموعد: من `{start_t}` إلى `{end_t}`\n\n"
-                                        f"جهز نفسك، المحاضرة ستبدأ خلال 5 دقائق! بالتوفيق يا بطل!"
+                                        f"جهز نفسك، المحاضرة ستبدأ خلال 5 دقائق!"
                                     )
                                     markup = InlineKeyboardMarkup()
                                     markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
                                     bot.send_message(u_id, alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
-                            notif_end_key = f"end_{s_id}_{today_date_str}"
-                            if notif_end_key not in notified_today:
-                                if end_total_mins <= current_total_mins <= end_total_mins + 2:
-                                    notified_today.add(notif_end_key)
-                                    end_alert_text = (
-                                        f"⏳ **تنبيه انتهاء المحاضرة!**\n\n"
+                            # 2. تنبيه مع بداية المحاضرة تماماً (عند دقيقة البداية بالضبط)
+                            notif_exact_key = f"startexact_{s_id}_{today_date_str}"
+                            if notif_exact_key not in notified_today:
+                                if start_total_mins <= current_total_mins <= start_total_mins + 1:
+                                    notified_today.add(notif_exact_key)
+                                    exact_alert_text = (
+                                        f"🚨 **بدء المحاضرة الآن!**\n\n"
                                         f"📚 المادة: `{s_name}` ({l_type})\n"
                                         f"🏛️ القاعة: `{hall}`\n"
-                                        f"⏰ انتهى موعد المحاضرة تماماً (كانت من `{start_t}` إلى `{end_t}`).\n\n"
-                                        f"نتمنى أن تكون قد استفدت بكامل التركيز!"
+                                        f"⏰ وقت البدء: `{start_t}`\n\n"
+                                        f"حضور موفق ومتابعة ممتعة يا بطل!"
                                     )
                                     markup = InlineKeyboardMarkup()
                                     markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
-                                    bot.send_message(u_id, end_alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
+                                    bot.send_message(u_id, exact_alert_text, parse_mode="Markdown", reply_markup=markup, protect_content=True)
 
                         except Exception as e:
                             print(f"Time calculation error: {e}")
@@ -380,13 +381,16 @@ def handle_text_messages(message):
             send_or_replace_message(chat_id, "تم إلغاء إضافة المحاضرة.", reply_markup=get_main_inline_keyboard())
             return
         try:
-            parts = text.split('|')
-            day_name = parts[0].strip()
-            s_name = parts[1].strip()
-            l_type = parts[2].strip()
-            hall = parts[3].strip()
-            start_t = parts[4].strip()
-            end_t = parts[5].strip()
+            lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+            if len(lines) < 6:
+                raise ValueError("يجب إدخال التفاصيل في 6 أسطر.")
+            
+            day_name = lines[0]
+            s_name = lines[1]
+            l_type = lines[2]
+            hall = lines[3]
+            start_t = lines[4]
+            end_t = lines[5]
 
             conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
             cursor = conn.cursor()
@@ -399,9 +403,9 @@ def handle_text_messages(message):
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("⏰ التنبيه الذكي", callback_data="schedule_menu"))
             markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
-            send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل البدء بـ 5 دقائق، وعند الانتهاء تماماً.", reply_markup=markup)
+            send_or_replace_message(chat_id, f"تمت إضافة المحاضرة بنجاح إلى جدولك الذكي!\nسيتم تنبيهك قبل البدء بـ 5 دقائق وعند بداية المحاضرة تماماً.", reply_markup=markup)
         except Exception:
-            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\nمثال:\n`الإثنين | فيزياء 1 | نظري | قاعة 1 | 4:10 AM | 4:20 AM`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل التفاصيل بالضبط بالشكل التالي (6 أسطر):\n\nاليوم\nالمادة\nنظري أو عملي\nمكان الحضور (القاعة)\nوقت البدء مع تحديد صباحا أو ظهرا\nوقت الانتهاء مع تحديد صباحا أو ظهرا\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
 
     if state == "waiting_for_semester_gpa":
@@ -430,25 +434,100 @@ def handle_text_messages(message):
             markup.row(InlineKeyboardButton("🧮 حاسبة المعدل", callback_data="gpa_calculator"))
             markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             
-            if gpa < 55:
-                status_message = (
-                    f"نتيجة حساب المعدل الفصلي:\n\n"
-                    f"- إجمالي الساعات: {total_hours}\n"
-                    f"- المعدل المحسوب: {gpa:.2f}\n\n"
-                    f"لا تقلق يا بطل!\n"
-                    f"البدايات قد تكون صعبة، لكنها فرصة حقيقية لتصحيح المسار ومضاعفة الجهد في المواد القادمة. أنت قادر على التعويض وتطوير أدائك في القادم إن شاء الله!"
-                )
-            else:
-                status_message = (
-                    f"نتيجة حساب المعدل الفصلي:\n\n"
-                    f"- إجمالي الساعات: {total_hours}\n"
-                    f"- المعدل المحسوب: {gpa:.2f}\n\n"
-                    f"مبارك مقدماً!"
-                )
-            
+            status_message = (
+                f"📊 **نتيجة حساب المعدل الفصلي:**\n\n"
+                f"- إجمالي الساعات: `{total_hours}`\n"
+                f"- المعدل المحسوب: `{gpa:.2f}`\n\n"
+                f"بالتوفيق دائماً يا بطل!"
+            )
             send_or_replace_message(chat_id, status_message, reply_markup=markup, parse_mode="Markdown")
         except Exception:
             send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل كل مادة في سطر بالشكل التالي:\n`العلامة | عدد الساعات`\nمثال:\n`85 | 3`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+        return
+
+    if state == "waiting_for_cumulative_gpa":
+        if text == "إلغاء":
+            user_states.pop(chat_id, None)
+            send_or_replace_message(chat_id, "تم إلغاء عملية حساب المعدل.", reply_markup=get_main_inline_keyboard())
+            return
+        try:
+            lines = text.strip().split('\n')
+            old_gpa = float(lines[0].strip())
+            old_hours = float(lines[1].strip())
+            
+            total_old_points = old_gpa * old_hours
+            semester_points = 0
+            semester_hours = 0
+            
+            for line in lines[2:]:
+                parts = line.split('|')
+                grade = float(parts[0].strip())
+                hours = float(parts[1].strip())
+                semester_points += (grade * hours)
+                semester_hours += hours
+            
+            total_hours = old_hours + semester_hours
+            if total_hours == 0:
+                raise ValueError("عدد الساعات الإجمالي لا يمكن أن يكون صفرًا.")
+                
+            cumulative_gpa = (total_old_points + semester_points) / total_hours
+            user_states.pop(chat_id, None)
+
+            markup = InlineKeyboardMarkup()
+            markup.row(InlineKeyboardButton("🧮 حاسبة المعدل", callback_data="gpa_calculator"))
+            markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
+            
+            status_message = (
+                f"📈 **نتيجة حساب المعدل التراكمي:**\n\n"
+                f"- إجمالي الساعات الكلي: `{total_hours}`\n"
+                f"- المعدل التراكمي الجديد: `{cumulative_gpa:.2f}`\n\n"
+                f"خطوات ثابتة نحو التميز والتخرج بتفوق!"
+            )
+            send_or_replace_message(chat_id, status_message, reply_markup=markup, parse_mode="Markdown")
+        except Exception:
+            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل المعدل القديم ثم الساعات ثم المواد بالشكل التالي:\n`المعدل التراكمي القديم`\n`إجمالي الساعات السابق`\n`العلامة | الساعات (للفصل الحالي)`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+        return
+
+    if chat_id == ADMIN_ID and state == "admin_adding_link_name":
+        if text == "إلغاء":
+            user_states.pop(chat_id, None)
+            send_or_replace_message(chat_id, "تم الإلغاء.", reply_markup=get_admin_inline_keyboard())
+            return
+        user_states[chat_id] = {"step": "admin_adding_link_week", "course_name": text}
+        send_or_replace_message(chat_id, "أرسل رقم الأسبوع الدراسي (مثال: `1`):", parse_mode="Markdown")
+        return
+
+    if chat_id == ADMIN_ID and state == "admin_adding_link_week":
+        if text == "إلغاء":
+            user_states.pop(chat_id, None)
+            send_or_replace_message(chat_id, "تم الإلغاء.", reply_markup=get_admin_inline_keyboard())
+            return
+        try:
+            week_num = int(text.strip())
+            user_states[chat_id]["week_number"] = week_num
+            user_states[chat_id]["step"] = "admin_adding_link_url"
+            send_or_replace_message(chat_id, "أرسل الرابط الآمن للمادة (الرابط الذي سيحصل عليه الطالب عند الدفع):", parse_mode="Markdown")
+        except Exception:
+            send_or_replace_message(chat_id, "رقم أسبوع غير صالح. أرسل رقماً صحيحاً:", parse_mode="Markdown")
+        return
+
+    if chat_id == ADMIN_ID and state == "admin_adding_link_url":
+        if text == "إلغاء":
+            user_states.pop(chat_id, None)
+            send_or_replace_message(chat_id, "تم الإلغاء.", reply_markup=get_admin_inline_keyboard())
+            return
+        c_name = user_states[chat_id].get("course_name")
+        w_num = user_states[chat_id].get("week_number")
+        secure_link = text.strip()
+
+        conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO course_links (course_name, week_number, secure_link) VALUES (?, ?, ?)", (c_name, w_num, secure_link))
+        conn.commit()
+        conn.close()
+
+        user_states.pop(chat_id, None)
+        send_or_replace_message(chat_id, f"تم حفظ رابط المادة بنجاح:\n- المقرّر: {c_name}\n- الأسبوع: {w_num}\n- الرابط: {secure_link}", reply_markup=get_admin_inline_keyboard())
         return
 
     safe_delete_message(chat_id, message.message_id)
@@ -461,7 +540,15 @@ def handle_callback_query(call):
     message_id = call.message.message_id
     data = call.data
 
-    if data == "ai_chat_start":
+    if data == "say_azkar":
+        bot.answer_callback_query(call.id)
+        chosen_zikr = random.choice(AZKAR_LIST)
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("📿 ذكر آخر", callback_data="say_azkar"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
+        send_or_replace_message(chat_id, f"✨ **أذكر الله:**\n\n{chosen_zikr}", reply_markup=markup, parse_mode="Markdown")
+
+    elif data == "ai_chat_start":
         bot.answer_callback_query(call.id)
         user_states[chat_id] = {"step": "ai_chatting"}
         markup = InlineKeyboardMarkup()
@@ -494,14 +581,14 @@ def handle_callback_query(call):
 
         text = "📅 **جدول المحاضرات الشخصي الذكي (أيام الدوام: السبت، الأحد، الإثنين، الثلاثاء)**\n\n"
         if not schedules:
-            text += "جدولك فارغ حالياً. قم بإضافة محاضراتك لتتلقى تنبيهات تلقائية قبل البدء بـ 5 دقائق وعند الانتهاء تماماً."
+            text += "جدولك فارغ حالياً. قم بإضافة محاضراتك لتتلقى التنبيهات بدقة قبل البدء بـ 5 دقائق وعند بداية المحاضرة تماماً."
         else:
             current_day = ""
             for s_id, d_name, s_name, l_type, hall, start_t, end_t in schedules:
                 if d_name != current_day:
                     current_day = d_name
                     text += f"\n🗓️ **[ يوم {current_day} ]**\n"
-                text += f"📚 مادة: *{s_name}* ({l_type})\n🏛️ القاعة: {hall}\n⏰ الموعد: من `{start_t}` إلى `{end_t}`\n\n"
+                text += f"📚 مادة: *{s_name}* ({l_type})\n🏛️ القاعة: {hall}\n⏰ من `{start_t}` إلى `{end_t}`\n\n"
 
         send_or_replace_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
 
@@ -510,7 +597,17 @@ def handle_callback_query(call):
         user_states[chat_id] = {"step": "waiting_for_schedule_details"}
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
-        send_or_replace_message(chat_id, "أرسل تفاصيل المحاضرة بالصيغة التالية تماماً:\n`اليوم | اسم المادة | نظري أو عملي | اسم القاعة | وقت البدء | وقت الانتهاء`\n\nمثال:\n`الإثنين | فيزياء 1 | نظري | قاعة 1 | 4:10 AM | 4:20 AM`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
+        instruction_text = (
+            "أرسل تفاصيل المحاضرة في 6 أسطر بالشكل التالي تماماً:\n\n"
+            "اليوم\n"
+            "المادة\n"
+            "نظري أو عملي\n"
+            "مكان الحضور (القاعة)\n"
+            "وقت البدء مع تحديد صباحا أو ظهرا (مثال: 4:10 صباحا أو 2:00 ظهرا)\n"
+            "وقت الانتهاء مع تحديد صباحا أو ظهرا\n\n"
+            "أو اكتب `إلغاء` للرجوع."
+        )
+        send_or_replace_message(chat_id, instruction_text, reply_markup=markup, parse_mode="Markdown")
 
     elif data == "clear_schedule":
         bot.answer_callback_query(call.id)
@@ -528,16 +625,26 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         user_states.pop(chat_id, None)
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("المعدل الفصلي", callback_data="gpa_semester"))
+        markup.row(
+            InlineKeyboardButton("المعدل الفصلي", callback_data="gpa_semester"),
+            InlineKeyboardButton("المعدل التراكمي", callback_data="gpa_cumulative")
+        )
         markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
-        send_or_replace_message(chat_id, "حاسبة المعدل الجامعي:\n\nاختر نوع الحساب الذي تريده:", reply_markup=markup, parse_mode="Markdown")
+        send_or_replace_message(chat_id, "🧮 حاسبة المعدل الجامعي:\n\nاختر نوع الحساب الذي تريده:", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "gpa_semester":
         bot.answer_callback_query(call.id)
         user_states[chat_id] = {"step": "waiting_for_semester_gpa"}
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
-        send_or_replace_message(chat_id, "حساب المعدل الفصلي:\n\nأرسل علاماتك وعدد الساعات (كل مادة في سطر):\n`العلامة | عدد الساعات`\n\nمثال:\n`85 | 3`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
+        send_or_replace_message(chat_id, "📊 حساب المعدل الفصلي:\n\nأرسل علاماتك وعدد الساعات (كل مادة في سطر):\n`العلامة | عدد الساعات`\n\nمثال:\n`85 | 3`\n`90 | 3`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
+
+    elif data == "gpa_cumulative":
+        bot.answer_callback_query(call.id)
+        user_states[chat_id] = {"step": "waiting_for_cumulative_gpa"}
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
+        send_or_replace_message(chat_id, "📈 حساب المعدل التراكمي:\n\nأرسل البيانات بالترتيب:\n1. المعدل التراكمي القديم\n2. إجمالي الساعات السابق\n3. العلامة | عدد الساعات (لكل مادة جديدة في سطر)\n\nمثال:\n`75.5`\n`60`\n`85 | 3`\n`90 | 3`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "special_services_menu":
         bot.answer_callback_query(call.id)
@@ -710,6 +817,38 @@ def handle_callback_query(call):
         else:
             send_or_replace_message(chat_id, "القائمة الرئيسية:", reply_markup=get_main_inline_keyboard())
 
+    elif data == "admin_add_link_menu":
+        if chat_id != ADMIN_ID:
+            return
+        bot.answer_callback_query(call.id)
+        user_states[chat_id] = {"step": "admin_adding_link_name"}
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("إلغاء", callback_data="main_menu"))
+        send_or_replace_message(chat_id, "أرسل اسم المادة تماماً كما هي في قائمة المواد:", reply_markup=markup)
+
+    elif data == "admin_show_links_menu":
+        if chat_id != ADMIN_ID:
+            return
+        conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("SELECT course_name, week_number, secure_link FROM course_links ORDER BY course_name, week_number")
+        links = cursor.fetchall()
+        conn.close()
+
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("الرجوع إلى لوحة الإدارة ↩️", callback_data="main_menu"))
+
+        if not links:
+            bot.answer_callback_query(call.id, "لا توجد روابط مخزنة.")
+            send_or_replace_message(chat_id, "لا توجد أي روابط مقررات مخزنة في القاعدة حالياً.", reply_markup=markup)
+            return
+
+        bot.answer_callback_query(call.id)
+        text = "📂 **قائمة الروابط المخزنة للمقررات:**\n\n"
+        for c_name, w_num, s_link in links:
+            text += f"📚 المقرّر: `{c_name}` (الأسبوع {w_num})\n🔗 الرابط: {s_link}\n-------------------\n"
+        send_or_replace_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
+
     elif data == "admin_check_receipts":
         if chat_id != ADMIN_ID:
             return
@@ -720,7 +859,7 @@ def handle_callback_query(call):
         conn.close()
 
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️️", callback_data="main_menu"))
 
         if not receipts:
             bot.answer_callback_query(call.id, "لا توجد إيصالات معلقة.")

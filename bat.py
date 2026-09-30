@@ -434,14 +434,14 @@ def handle_text_messages(message):
             markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
             
             status_message = (
-                f"📊 **نتيجة حساب المعدل الفصلي (من 4.0):**\n\n"
+                f"📊 **نتيجة حساب المعدل الفصلي:**\n\n"
                 f"- إجمالي الساعات: `{total_hours}`\n"
-                f"- المعدل المحسوب: `{gpa:.2f}` / 4.0\n\n"
+                f"- المعدل المحسوب: `{gpa:.2f}`\n\n"
                 f"بالتوفيق دائماً يا بطل!"
             )
             send_or_replace_message(chat_id, status_message, reply_markup=markup, parse_mode="Markdown")
         except Exception:
-            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل كل مادة في سطر بالشكل التالي:\n`النقاط (من 4) | عدد الساعات`\nمثال:\n`3.5 | 3`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
+            send_or_replace_message(chat_id, "خطأ في الصيغة. أرسل كل مادة في سطر بالشكل التالي:\n`النقاط أو العلامة | عدد الساعات`\nمثال:\n`3.5 | 3`\n\nأو اكتب `إلغاء`.", parse_mode="Markdown")
         return
 
     if state == "waiting_for_cumulative_gpa":
@@ -612,6 +612,7 @@ def handle_callback_query(call):
         conn.close()
         bot.answer_callback_query(call.id, "تم الحذف بنجاح.")
         
+        # إعادة توجيه لنفس قائمة التعديل
         conn = sqlite3.connect('kashkoul.db', check_same_thread=False)
         cursor = conn.cursor()
         cursor.execute("SELECT id, day_name, subject_name FROM smart_schedule WHERE user_id = ?", (chat_id,))
@@ -621,7 +622,7 @@ def handle_callback_query(call):
         markup = InlineKeyboardMarkup()
         for s_id, d_name, s_name in items:
             markup.row(InlineKeyboardButton(f"حذف: {s_name} ({d_name})", callback_data=f"del_sched_{s_id}"))
-        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="schedule_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️️", callback_data="schedule_menu"))
         send_or_replace_message(chat_id, "تم تحديث الجدول. اختر محاضرة أخرى للحذف أو ارجع للخلف:", reply_markup=markup)
 
     elif data == "clear_schedule":
@@ -652,19 +653,7 @@ def handle_callback_query(call):
         user_states[chat_id] = {"step": "waiting_for_semester_gpa"}
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
-        send_or_replace_message(
-            chat_id, 
-            "📊 **حساب المعدل الفصلي (من 4.0):**\n\n"
-            "💡 قم بتحويل علاماتك المئوية إلى نقاط من 4 (مثلاً: 90% = 4.0، 80% = 3.5، 70% = 3.0).\n\n"
-            "أرسل النقاط وعدد الساعات (كل مادة في سطر):\n"
-            "`النقاط | عدد الساعات`\n\n"
-            "مثال:\n"
-            "`3.5 | 3`\n"
-            "`4.0 | 3`\n\n"
-            "أو اكتب `إلغاء` للرجوع.", 
-            reply_markup=markup, 
-            parse_mode="Markdown"
-        )
+        send_or_replace_message(chat_id, "📊 حساب المعدل الفصلي:\n\nأرسل النقاط وعدد الساعات (كل مادة في سطر):\n`النقاط | عدد الساعات`\n\nمثال:\n`3.5 | 3`\n`4.0 | 3`\n\nأو اكتب `إلغاء` للرجوع.", reply_markup=markup, parse_mode="Markdown")
 
     elif data == "gpa_cumulative":
         bot.answer_callback_query(call.id)
@@ -673,13 +662,9 @@ def handle_callback_query(call):
         markup.row(InlineKeyboardButton("السابق ↩️", callback_data="gpa_calculator"))
         send_or_replace_message(
             chat_id, 
-            "📈 **حساب المعدل التراكمي (من 4.0):**\n\n"
-            "💡 **كيف يتم احتساب النقاط؟**\n"
-            "يتم تحويل علامة كل مادة من علامة مئوية (مثل 85%) إلى نقاط من 4.0 حسب سلّم جامعتك:\n"
-            "• امتياز (90-100) = 4.0 نقاط\n"
-            "• جيد جداً (80-89) = 3.5 - 3.9 نقاط\n"
-            "• جيد (70-79) = 3.0 - 3.4 نقاط\n"
-            "• مقبول (60-69) = 2.0 - 2.9 نقاط\n\n"
+            "📈 حساب المعدل التراكمي (من 4.0):\n\n"
+            "💡 **ملاحظة حول احتساب النقاط:**\n"
+            "في الجامعات الخاصة يُحسب المعدل من 4.0. يمكنك تحويل علامتك (مثل 85%) إلى نقاط (مثلاً 3.5 أو ما يعادلها حسب سلّم الجامعة) ثم إرسالها.\n\n"
             "أرسل البيانات بالترتيب الآتي:\n"
             "1. المعدل التراكمي القديم (من 4)\n"
             "2. إجمالي الساعات السابق\n"
@@ -854,7 +839,7 @@ def handle_callback_query(call):
         bot.answer_callback_query(call.id)
         about_text = "«يُقدّم بوت (Kashkoul Jami'i) مواكبة أسبوعية لكل مقرر دراسي تماشيًا مع ما يطرحه أستاذ المادة، وذلك عبر توفير ملفات رقمية مشروحة بشكل دوري ومستمر كل أسبوع؛ لضمان متابعة الطالب وعدم تشتته طوال الفصل الدراسي الأول. إضافةً إلى تقديم خدمات متميزة لكل طالب جامعي طوال مسيرته الأكاديمية.»"
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️️", callback_data="main_menu"))
         send_or_replace_message(chat_id, about_text, reply_markup=markup, parse_mode="Markdown")
 
     elif data == "main_menu":
@@ -921,7 +906,7 @@ def handle_callback_query(call):
         conn.close()
         
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("السابق ↩️️", callback_data="admin_add_link_menu"))
+        markup.row(InlineKeyboardButton("السابق ↩️", callback_data="admin_add_link_menu"))
         send_or_replace_message(chat_id, "تم تفريغ وحذف جميع روابط الأسابيع بنجاح.", reply_markup=markup)
 
     elif data == "admin_show_links_menu":
@@ -957,7 +942,7 @@ def handle_callback_query(call):
         conn.close()
 
         markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩️", callback_data="main_menu"))
+        markup.row(InlineKeyboardButton("الرجوع إلى القائمة ↩", callback_data="main_menu"))
 
         if not receipts:
             bot.answer_callback_query(call.id, "لا توجد إيصالات معلقة.")
@@ -1056,5 +1041,5 @@ def handle_callback_query(call):
         send_or_replace_message(chat_id, "لوحة الطالب الرئيسية:", reply_markup=get_main_inline_keyboard())
 
 if __name__ == '__main__':
-    print("البوت يعمل الآن بكفاءة عالية وبكافة التعديلات المطلوبة...")
+    print("البوت يعمل الآن بكفاءة عالية ومنظومة التعديلات المطلوبة...")
     bot.infinity_polling()
